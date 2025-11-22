@@ -1,0 +1,284 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Канбан заявок - АРМ KIA{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-columns me-2"></i>Канбан заявок</h1>
+    <div class="d-flex gap-2">
+        <a href="{% url 'sales:lead_list' %}" class="btn btn-outline-primary">
+            <i class="fas fa-list me-1"></i>Список
+        </a>
+        <div class="input-group" style="width: 250px;">
+            <input type="text" class="form-control" placeholder="Поиск..." id="searchInput">
+            <button class="btn btn-outline-secondary" type="button">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Статистика воронки -->
+<div class="row mb-4">
+    {% for status_code, status_data in leads_by_status.items %}
+    <div class="col">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <h6 class="card-title mb-1 small">{{ status_data.name }}</h6>
+                <h4 class="mb-0 text-primary">{{ status_data.leads|length }}</h4>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Канбан доска -->
+<div class="kanban-board" id="kanbanBoard">
+    <div class="row g-3">
+        {% for status_code, status_data in leads_by_status.items %}
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <div class="kanban-column">
+                <div class="kanban-column-header 
+                    {% if status_code == 'new' %}bg-warning
+                    {% elif status_code == 'in_progress' %}bg-info
+                    {% elif status_code == 'presentation' %}bg-primary
+                    {% elif status_code == 'test_drive' %}bg-secondary
+                    {% elif status_code == 'contract' %}bg-dark
+                    {% elif status_code == 'success' %}bg-success
+                    {% elif status_code == 'failed' %}bg-danger
+                    {% endif %} text-white">
+                    <h6 class="mb-0">{{ status_data.name }}</h6>
+                    <span class="badge bg-light text-dark">{{ status_data.leads|length }}</span>
+                </div>
+                <div class="kanban-column-body" data-status="{{ status_code }}">
+                    {% for lead in status_data.leads %}
+                    <div class="kanban-card" data-lead-id="{{ lead.id }}">
+                        <div class="kanban-card-header">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="badge priority-{{ lead.priority }} me-1">
+                                    {{ lead.get_priority_display }}
+                                </span>
+                                <small class="text-muted">#{{ lead.id }}</small>
+                            </div>
+                            <h6 class="kanban-card-title">{{ lead.client.full_name }}</h6>
+                        </div>
+                        
+                        <div class="kanban-card-body">
+                            <div class="kanban-card-info">
+                                <div class="mb-1">
+                                    <i class="fas fa-phone text-muted me-1 small"></i>
+                                    <small>{{ lead.client.phone }}</small>
+                                </div>
+                                {% if lead.client.email %}
+                                <div class="mb-1">
+                                    <i class="fas fa-envelope text-muted me-1 small"></i>
+                                    <small>{{ lead.client.email }}</small>
+                                </div>
+                                {% endif %}
+                                <div class="mb-1">
+                                    <i class="fas fa-source text-muted me-1 small"></i>
+                                    <small>{{ lead.get_source_display }}</small>
+                                </div>
+                            </div>
+                            
+                            {% if lead.initial_comment %}
+                            <div class="kanban-card-comment mt-2">
+                                <small class="text-muted">{{ lead.initial_comment|truncatechars:50 }}</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="kanban-card-footer">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">{{ lead.created_date|date:"d.m.Y" }}</small>
+                                <div class="btn-group">
+                                    <a href="{% url 'sales:client_detail' lead.client.pk %}" class="btn btn-sm btn-outline-primary" title="Просмотр">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="tel:{{ lead.client.phone }}" class="btn btn-sm btn-outline-success" title="Позвонить">
+                                        <i class="fas fa-phone"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="mt-1">
+                                <small class="text-muted">
+                                    <i class="fas fa-user me-1"></i>{{ lead.assigned_manager.first_name }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="kanban-empty">
+                        <i class="fas fa-inbox text-muted mb-2"></i>
+                        <p class="text-muted small mb-0">Нет заявок</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация Sortable.js для перетаскивания
+    const columns = document.querySelectorAll('.kanban-column-body');
+    
+    columns.forEach(column => {
+        new Sortable(column, {
+            group: 'leads',
+            animation: 150,
+            ghostClass: 'kanban-card-ghost',
+            chosenClass: 'kanban-card-chosen',
+            dragClass: 'kanban-card-drag',
+            onEnd: function(evt) {
+                const leadId = evt.item.dataset.leadId;
+                const newStatus = evt.to.dataset.status;
+                
+                // Отправка AJAX запроса на обновление статуса
+                updateLeadStatus(leadId, newStatus);
+            }
+        });
+    });
+    
+    function updateLeadStatus(leadId, newStatus) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch(`/sales/leads/${leadId}/update-status/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `status=${newStatus}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                // В случае ошибки возвращаем карточку обратно
+                alert('Ошибка при обновлении статуса');
+            } else {
+                // Успешное обновление
+                console.log('Статус обновлен:', data.new_status);
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка:', error);
+            alert('Ошибка при обновлении статуса');
+        });
+    }
+    
+    // Поиск по канбану
+    const searchInput = document.getElementById('searchInput');
+    const kanbanCards = document.querySelectorAll('.kanban-card');
+    
+    searchInput.addEventListener('input', function() {
+        const searchValue = this.value.toLowerCase();
+        
+        kanbanCards.forEach(card => {
+            const cardText = card.textContent.toLowerCase();
+            if (cardText.includes(searchValue)) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
+
+<style>
+.kanban-column {
+    background: #f8f9fa;
+    border-radius: 8px;
+    min-height: 700px;
+}
+
+.kanban-column-header {
+    padding: 12px 16px;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.kanban-column-body {
+    padding: 12px;
+    min-height: 600px;
+}
+
+.kanban-card {
+    background: white;
+    border: 1px solid #e3e6f0;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    cursor: move;
+    transition: all 0.2s ease;
+}
+
+.kanban-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transform: translateY(-1px);
+}
+
+.kanban-card-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    line-height: 1.3;
+}
+
+.kanban-card-info {
+    font-size: 0.8rem;
+}
+
+.kanban-card-footer {
+    border-top: 1px solid #e9ecef;
+    padding-top: 8px;
+    margin-top: 8px;
+}
+
+.kanban-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+}
+
+/* Приоритеты */
+.priority-3 { background-color: #dc3545; color: white; }
+.priority-2 { background-color: #ffc107; color: black; }
+.priority-1 { background-color: #28a745; color: white; }
+
+/* Анимации для перетаскивания */
+.kanban-card-ghost {
+    opacity: 0.4;
+}
+
+.kanban-card-chosen {
+    transform: rotate(5deg);
+}
+
+.kanban-card-drag {
+    opacity: 1;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .kanban-column {
+        min-height: 400px;
+        margin-bottom: 20px;
+    }
+    
+    .kanban-column-body {
+        min-height: 300px;
+    }
+}
+</style>
+{% endblock %}

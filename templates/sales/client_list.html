@@ -1,0 +1,363 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Клиенты - АРМ KIA{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-users me-2"></i>Клиенты</h1>
+    <div class="d-flex gap-2">
+        <a href="{% url 'sales:client_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>Добавить клиента
+        </a>
+        <div class="input-group" style="width: 300px;">
+            <input type="text" class="form-control" placeholder="Поиск клиентов..." id="searchInput">
+            <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Статистика -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title text-primary">Всего клиентов</h5>
+                        <h2 class="mb-0">{{ clients.count }}</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-users fa-2x text-primary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title text-success">Активные</h5>
+                        <h2 class="mb-0">{{ clients.count }}</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-user-check fa-2x text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title text-warning">С сайта</h5>
+                        <h2 class="mb-0">{{ clients.count }}</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-globe fa-2x text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title text-info">Конверсия</h5>
+                        <h2 class="mb-0">15%</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-chart-line fa-2x text-info"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Фильтры -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Источник</label>
+                <select class="form-select" id="sourceFilter">
+                    <option value="">Все источники</option>
+                    <option value="website">🌐 Сайт</option>
+                    <option value="phone">📞 Телефон</option>
+                    <option value="showroom">🏢 Шоу-рум</option>
+                    <option value="recommendation">👥 Рекомендация</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Статус</label>
+                <select class="form-select" id="statusFilter">
+                    <option value="">Все статусы</option>
+                    <option value="active">🟢 Активный</option>
+                    <option value="hot">🔴 Горячий</option>
+                    <option value="cold">🔵 Холодный</option>
+                    <option value="sold">💰 Купил</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button class="btn btn-outline-secondary w-100" id="resetFilters">
+                    <i class="fas fa-undo me-1"></i>Сбросить фильтры
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Таблица клиентов -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Список клиентов</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0" id="clientsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th width="50">ID</th>
+                        <th>Клиент</th>
+                        <th>Контакты</th>
+                        <th>Источник</th>
+                        <th>Статус</th>
+                        <th>Заявки</th>
+                        <th>Последний контакт</th>
+                        <th>Дата регистрации</th>
+                        <th width="120">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for client in clients %}
+                    <tr class="client-row" data-source="{{ client.source }}">
+                        <td class="fw-bold">#{{ client.id }}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center me-3" 
+                                     style="width: 40px; height: 40px;">
+                                    <span class="text-white fw-bold">{{ client.full_name|first|upper }}</span>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">{{ client.full_name }}</h6>
+                                    {% if client.passport_series %}
+                                    <small class="text-muted">Паспорт: {{ client.passport_series }} ******</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div>
+                                <div class="mb-1">
+                                    <i class="fas fa-phone text-muted me-2"></i>
+                                    <a href="tel:{{ client.phone }}" class="text-decoration-none">{{ client.phone }}</a>
+                                </div>
+                                {% if client.email %}
+                                <div>
+                                    <i class="fas fa-envelope text-muted me-2"></i>
+                                    <a href="mailto:{{ client.email }}" class="text-decoration-none">{{ client.email }}</a>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark">
+                                {{ client.get_source_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-success">
+                                <i class="fas fa-circle me-1"></i>Активный
+                            </span>
+                        </td>
+                        <td>
+                            <div class="text-center">
+                                <span class="fw-bold text-primary">2</span>
+                                <br>
+                                <small class="text-muted">заявки</small>
+                            </div>
+                        </td>
+                        <td>
+                            <small class="text-muted">Сегодня</small>
+                            <br>
+                            <small>📞 Звонок</small>
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ client.created_at|date:"d.m.Y" }}</small>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'sales:client_detail' client.pk %}" class="btn btn-outline-primary" title="Просмотр">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="tel:{{ client.phone }}" class="btn btn-outline-success" title="Позвонить">
+                                    <i class="fas fa-phone"></i>
+                                </a>
+                                <a href="https://wa.me/{{ client.phone }}" class="btn btn-outline-success" title="WhatsApp" target="_blank">
+                                    <i class="fab fa-whatsapp"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Клиенты не найдены</h5>
+                            <p class="text-muted">Добавьте первого клиента, нажав на кнопку "Добавить клиента"</p>
+                            <a href="{% url 'sales:client_create' %}" class="btn btn-primary mt-2">
+                                <i class="fas fa-plus me-1"></i>Добавить клиента
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if clients.has_other_pages %}
+    <div class="card-footer">
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center mb-0">
+                {% if clients.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ clients.previous_page_number }}">Назад</a>
+                </li>
+                {% endif %}
+
+                {% for num in clients.paginator.page_range %}
+                    {% if clients.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                    {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if clients.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ clients.next_page_number }}">Вперед</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Быстрые действия -->
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-file-import fa-2x text-primary mb-3"></i>
+                <h5>Импорт клиентов</h5>
+                <p class="text-muted">Загрузите список клиентов из Excel</p>
+                <button class="btn btn-outline-primary">Импортировать</button>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-file-export fa-2x text-success mb-3"></i>
+                <h5>Экспорт клиентов</h5>
+                <p class="text-muted">Выгрузите данные в Excel или PDF</p>
+                <button class="btn btn-outline-success">Экспортировать</button>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-pie fa-2x text-info mb-3"></i>
+                <h5>Аналитика</h5>
+                <p class="text-muted">Статистика по источникам клиентов</p>
+                <a href="{% url 'sales:reports' %}" class="btn btn-outline-info">Смотреть</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Фильтрация таблицы
+    const sourceFilter = document.getElementById('sourceFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const searchInput = document.getElementById('searchInput');
+    const resetButton = document.getElementById('resetFilters');
+    const clientsTable = document.getElementById('clientsTable');
+    const clientRows = clientsTable.querySelectorAll('.client-row');
+
+    function filterClients() {
+        const sourceValue = sourceFilter.value;
+        const statusValue = statusFilter.value;
+        const searchValue = searchInput.value.toLowerCase();
+
+        clientRows.forEach(row => {
+            const sourceMatch = !sourceValue || row.dataset.source === sourceValue;
+            const textMatch = !searchValue || row.textContent.toLowerCase().includes(searchValue);
+
+            row.style.display = (sourceMatch && textMatch) ? '' : 'none';
+        });
+    }
+
+    sourceFilter.addEventListener('change', filterClients);
+    statusFilter.addEventListener('change', filterClients);
+    searchInput.addEventListener('input', filterClients);
+
+    resetButton.addEventListener('click', function() {
+        sourceFilter.value = '';
+        statusFilter.value = '';
+        searchInput.value = '';
+        filterClients();
+    });
+
+    // Поиск при нажатии кнопки
+    document.getElementById('searchButton').addEventListener('click', filterClients);
+
+    // Быстрый поиск при вводе
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(filterClients, 300);
+    });
+});
+</script>
+
+<style>
+.avatar-sm {
+    font-size: 1rem;
+}
+.client-row:hover {
+    background-color: #f8f9fa !important;
+    cursor: pointer;
+}
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+}
+.card {
+    border: 1px solid #e3e6f0;
+    border-radius: 0.35rem;
+}
+.badge {
+    font-weight: 500;
+}
+</style>
+{% endblock %}

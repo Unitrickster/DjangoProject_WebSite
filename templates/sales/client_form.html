@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}{{ title }} - АРМ KIA{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex align-items-center">
+        <a href="{% url 'sales:client_list' %}" class="btn btn-outline-secondary me-3">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <h1 class="mb-0"><i class="fas fa-user-plus me-2"></i>{{ title }}</h1>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Основная информация</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">ФИО *</label>
+                                {% render_field form.full_name class="form-control" placeholder="Введите полное имя" %}
+                                {% if form.full_name.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ form.full_name.errors }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Телефон *</label>
+                                {% render_field form.phone class="form-control" placeholder="+7 XXX XXX-XX-XX" %}
+                                {% if form.phone.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ form.phone.errors }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Email</label>
+                                {% render_field form.email class="form-control" placeholder="email@example.com" %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Источник *</label>
+                                {% render_field form.source class="form-select" %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Серия паспорта</label>
+                                {% render_field form.passport_series class="form-control" placeholder="0000" maxlength="4" %}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Номер паспорта</label>
+                                {% render_field form.passport_number class="form-control" placeholder="000000" maxlength="6" %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Кем выдан</label>
+                                {% render_field form.passport_issued_by class="form-control" placeholder="ОВД города Москвы" %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Адрес регистрации</label>
+                        {% render_field form.registration_address class="form-control" rows="2" placeholder="Полный адрес регистрации" %}
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'sales:client_list' %}" class="btn btn-secondary">Отмена</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>Сохранить клиента
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Подсказки -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-lightbulb me-2"></i>Подсказки</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Обязательные поля отмечены звездочкой (*)</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Номер телефона должен быть уникальным</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Паспортные данные помогут при оформлении договора</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Укажите правильный источник для аналитики</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Маска для телефона
+    const phoneInput = document.getElementById('{{ form.phone.id_for_label }}');
+    phoneInput.addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.startsWith('7') || value.startsWith('8')) {
+            value = value.substring(1);
+        }
+        if (value.length > 0) {
+            value = '+7 ' + value;
+        }
+        if (value.length > 7) {
+            value = value.substring(0, 7) + ' ' + value.substring(7);
+        }
+        if (value.length > 11) {
+            value = value.substring(0, 11) + ' ' + value.substring(11);
+        }
+        if (value.length > 14) {
+            value = value.substring(0, 14);
+        }
+        e.target.value = value;
+    });
+
+    // Ограничение для серии паспорта
+    const passportSeries = document.getElementById('{{ form.passport_series.id_for_label }}');
+    passportSeries.addEventListener('input', function(e) {
+        e.target.value = e.target.value.replace(/\D/g, '').substring(0, 4);
+    });
+
+    // Ограничение для номера паспорта
+    const passportNumber = document.getElementById('{{ form.passport_number.id_for_label }}');
+    passportNumber.addEventListener('input', function(e) {
+        e.target.value = e.target.value.replace(/\D/g, '').substring(0, 6);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,429 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ client.full_name }} - АРМ KIA{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex align-items-center">
+        <a href="{% url 'sales:client_list' %}" class="btn btn-outline-secondary me-3">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <h1 class="mb-0"><i class="fas fa-user me-2"></i>{{ client.full_name }}</h1>
+    </div>
+    <div class="btn-group">
+        <a href="tel:{{ client.phone }}" class="btn btn-success">
+            <i class="fas fa-phone me-1"></i>Позвонить
+        </a>
+        <a href="https://wa.me/{{ client.phone }}" class="btn btn-success" target="_blank">
+            <i class="fab fa-whatsapp me-1"></i>WhatsApp
+        </a>
+        {% if client.email %}
+        <a href="mailto:{{ client.email }}" class="btn btn-primary">
+            <i class="fas fa-envelope me-1"></i>Email
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <!-- Левая колонка - Основная информация -->
+    <div class="col-md-4">
+        <!-- Карточка клиента -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Основная информация</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="avatar-lg bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" 
+                         style="width: 80px; height: 80px;">
+                        <span class="text-white fw-bold" style="font-size: 2rem;">{{ client.full_name|first|upper }}</span>
+                    </div>
+                    <h4>{{ client.full_name }}</h4>
+                    <span class="badge bg-{% if client.source == 'website' %}primary{% elif client.source == 'phone' %}success{% elif client.source == 'showroom' %}warning{% else %}info{% endif %}">
+                        {{ client.get_source_display }}
+                    </span>
+                </div>
+
+                <div class="client-info">
+                    <div class="info-item mb-3">
+                        <label class="form-label text-muted mb-1">Телефон</label>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold">{{ client.phone }}</span>
+                            <a href="tel:{{ client.phone }}" class="btn btn-sm btn-outline-success">
+                                <i class="fas fa-phone"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    {% if client.email %}
+                    <div class="info-item mb-3">
+                        <label class="form-label text-muted mb-1">Email</label>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold">{{ client.email }}</span>
+                            <a href="mailto:{{ client.email }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-envelope"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if client.passport_series %}
+                    <div class="info-item mb-3">
+                        <label class="form-label text-muted mb-1">Паспорт</label>
+                        <p class="mb-0 fw-bold">{{ client.passport_series }} {{ client.passport_number }}</p>
+                        {% if client.passport_issued_by %}
+                        <small class="text-muted">{{ client.passport_issued_by }}</small>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if client.registration_address %}
+                    <div class="info-item mb-3">
+                        <label class="form-label text-muted mb-1">Адрес регистрации</label>
+                        <p class="mb-0">{{ client.registration_address }}</p>
+                    </div>
+                    {% endif %}
+
+                    <div class="info-item">
+                        <label class="form-label text-muted mb-1">Дата регистрации</label>
+                        <p class="mb-0">{{ client.created_at|date:"d.m.Y H:i" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Быстрые действия -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Быстрые действия</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addInteractionModal">
+                        <i class="fas fa-plus me-2"></i>Добавить взаимодействие
+                    </button>
+                    <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#createLeadModal">
+                        <i class="fas fa-plus me-2"></i>Создать заявку
+                    </button>
+                    <a href="#" class="btn btn-outline-warning">
+                        <i class="fas fa-edit me-2"></i>Редактировать данные
+                    </a>
+                    <a href="#" class="btn btn-outline-info">
+                        <i class="fas fa-file-contract me-2"></i>Создать договор
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Правая колонка - Активность -->
+    <div class="col-md-8">
+        <!-- Статистика -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body py-3">
+                        <h6 class="card-title text-muted mb-1">Заявки</h6>
+                        <h3 class="text-primary mb-0">{{ leads.count }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body py-3">
+                        <h6 class="card-title text-muted mb-1">Взаимодействия</h6>
+                        <h3 class="text-success mb-0">{{ interactions.count }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body py-3">
+                        <h6 class="card-title text-muted mb-1">Покупки</h6>
+                        <h3 class="text-warning mb-0">{{ contracts.count }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body py-3">
+                        <h6 class="card-title text-muted mb-1">Лояльность</h6>
+                        <h3 class="text-info mb-0">85%</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Взаимодействия -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">История взаимодействий</h5>
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addInteractionModal">
+                    <i class="fas fa-plus me-1"></i>Добавить
+                </button>
+            </div>
+            <div class="card-body">
+                {% if interactions %}
+                <div class="timeline">
+                    {% for interaction in interactions %}
+                    <div class="timeline-item {% if forloop.first %}first{% endif %}">
+                        <div class="timeline-marker 
+                            {% if interaction.type == 'call' %}bg-success
+                            {% elif interaction.type == 'email' %}bg-primary
+                            {% elif interaction.type == 'meeting' %}bg-warning
+                            {% elif interaction.type == 'test_drive' %}bg-info
+                            {% else %}bg-secondary{% endif %}">
+                            <i class="fas 
+                                {% if interaction.type == 'call' %}fa-phone
+                                {% elif interaction.type == 'email' %}fa-envelope
+                                {% elif interaction.type == 'meeting' %}fa-handshake
+                                {% elif interaction.type == 'test_drive' %}fa-car
+                                {% else %}fa-sticky-note{% endif %} text-white">
+                            </i>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <h6 class="mb-0">{{ interaction.get_type_display }}</h6>
+                                <small class="text-muted">{{ interaction.date_time|date:"d.m.Y H:i" }}</small>
+                            </div>
+                            <p class="mb-2">{{ interaction.result }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <i class="fas fa-user me-1"></i>{{ interaction.manager.get_full_name|default:interaction.manager.username }}
+                                </small>
+                                {% if interaction.next_contact_date %}
+                                <small class="text-warning">
+                                    <i class="fas fa-clock me-1"></i>След. контакт: {{ interaction.next_contact_date|date:"d.m.Y H:i" }}
+                                </small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Нет взаимодействий</h5>
+                    <p class="text-muted">Добавьте первое взаимодействие с клиентом</p>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addInteractionModal">
+                        <i class="fas fa-plus me-1"></i>Добавить взаимодействие
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Заявки клиента -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Заявки клиента</h5>
+            </div>
+            <div class="card-body">
+                {% if leads %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Статус</th>
+                                <th>Менеджер</th>
+                                <th>Дата создания</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for lead in leads %}
+                            <tr>
+                                <td class="fw-bold">#{{ lead.id }}</td>
+                                <td>
+                                    <span class="badge 
+                                        {% if lead.status == 'new' %}bg-warning
+                                        {% elif lead.status == 'in_progress' %}bg-info
+                                        {% elif lead.status == 'presentation' %}bg-primary
+                                        {% elif lead.status == 'test_drive' %}bg-secondary
+                                        {% elif lead.status == 'contract' %}bg-dark
+                                        {% elif lead.status == 'success' %}bg-success
+                                        {% elif lead.status == 'failed' %}bg-danger
+                                        {% endif %}">
+                                        {{ lead.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>{{ lead.assigned_manager.get_full_name|default:lead.assigned_manager.username }}</td>
+                                <td>{{ lead.created_date|date:"d.m.Y" }}</td>
+                                <td>
+                                    <a href="#" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <p class="text-muted mb-3">У клиента пока нет заявок</p>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createLeadModal">
+                        <i class="fas fa-plus me-1"></i>Создать заявку
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно добавления взаимодействия -->
+<div class="modal fade" id="addInteractionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавить взаимодействие</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Тип взаимодействия</label>
+                        {{ form.type }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Дата и время</label>
+                        {{ form.date_time }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Результат</label>
+                        {{ form.result }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Следующий контакт</label>
+                        {{ form.next_contact_date }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно создания заявки -->
+<div class="modal fade" id="createLeadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Создать заявку для {{ client.full_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createLeadForm">
+                    <div class="mb-3">
+                        <label class="form-label">Источник заявки</label>
+                        <select class="form-select" name="source">
+                            <option value="website">🌐 Сайт</option>
+                            <option value="phone">📞 Телефон</option>
+                            <option value="showroom">🏢 Шоу-рум</option>
+                            <option value="recommendation">👥 Рекомендация</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Комментарий</label>
+                        <textarea class="form-control" name="comment" rows="3" placeholder="Дополнительная информация..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Приоритет</label>
+                        <select class="form-select" name="priority">
+                            <option value="3">🔴 Высокий</option>
+                            <option value="2" selected>🟡 Средний</option>
+                            <option value="1">🟢 Низкий</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="saveLead">Создать заявку</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Создание заявки
+    document.getElementById('saveLead').addEventListener('click', function() {
+        const form = document.getElementById('createLeadForm');
+        const formData = new FormData(form);
+        
+        // Здесь будет AJAX запрос для создания заявки
+        console.log('Создание заявки:', Object.fromEntries(formData));
+        
+        // Закрываем модальное окно
+        const modal = bootstrap.Modal.getInstance(document.getElementById('createLeadModal'));
+        modal.hide();
+        
+        // Показываем уведомление
+        alert('Заявка успешно создана!');
+    });
+});
+</script>
+
+<style>
+.avatar-lg {
+    font-size: 2rem;
+}
+.client-info .info-item {
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 1rem;
+}
+.client-info .info-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+.timeline-item {
+    position: relative;
+    padding-bottom: 2rem;
+}
+.timeline-item.first {
+    padding-top: 0;
+}
+.timeline-marker {
+    position: absolute;
+    left: -2rem;
+    top: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.timeline-content {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.375rem;
+    border-left: 3px solid #e9ecef;
+}
+.timeline-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: -0.75rem;
+    top: 2.5rem;
+    bottom: 0;
+    width: 2px;
+    background: #e9ecef;
+}
+</style>
+{% endblock %}

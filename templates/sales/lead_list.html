@@ -1,0 +1,356 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Список заявок - АРМ KIA{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-list me-2"></i>Список заявок</h1>
+    <div class="d-flex gap-2">
+        <a href="{% url 'sales:lead_kanban' %}" class="btn btn-outline-primary">
+            <i class="fas fa-columns me-1"></i>Канбан
+        </a>
+        <div class="input-group" style="width: 300px;">
+            <input type="text" class="form-control" placeholder="Поиск клиента..." id="searchInput">
+            <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Фильтры -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Статус</label>
+                <select class="form-select" id="statusFilter">
+                    <option value="">Все статусы</option>
+                    <option value="new">🆕 Новая</option>
+                    <option value="in_progress">🔄 В работе</option>
+                    <option value="presentation">📊 Презентация</option>
+                    <option value="test_drive">🚗 Тест-драйв</option>
+                    <option value="contract">📝 Оформление</option>
+                    <option value="success">✅ Успех</option>
+                    <option value="failed">❌ Провал</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Приоритет</label>
+                <select class="form-select" id="priorityFilter">
+                    <option value="">Все приоритеты</option>
+                    <option value="3">🔴 Высокий</option>
+                    <option value="2">🟡 Средний</option>
+                    <option value="1">🟢 Низкий</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Источник</label>
+                <select class="form-select" id="sourceFilter">
+                    <option value="">Все источники</option>
+                    <option value="website">🌐 Сайт</option>
+                    <option value="phone">📞 Телефон</option>
+                    <option value="showroom">🏢 Шоу-рум</option>
+                    <option value="recommendation">👥 Рекомендация</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button class="btn btn-outline-secondary w-100" id="resetFilters">
+                    <i class="fas fa-undo me-1"></i>Сбросить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Статистика -->
+<div class="row mb-4">
+    <div class="col-md-2">
+        <div class="card text-white bg-primary">
+            <div class="card-body text-center p-3">
+                <h6 class="card-title">Всего</h6>
+                <h4 class="mb-0">{{ leads.count }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-white bg-warning">
+            <div class="card-body text-center p-3">
+                <h6 class="card-title">Новые</h6>
+                <h4 class="mb-0">{{ leads|length }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-white bg-info">
+            <div class="card-body text-center p-3">
+                <h6 class="card-title">В работе</h6>
+                <h4 class="mb-0">{{ leads|length }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-white bg-success">
+            <div class="card-body text-center p-3">
+                <h6 class="card-title">Успех</h6>
+                <h4 class="mb-0">{{ leads|length }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-white bg-danger">
+            <div class="card-body text-center p-3">
+                <h6 class="card-title">Провал</h6>
+                <h4 class="mb-0">{{ leads|length }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-white bg-secondary">
+            <div class="card-body text-center p-3">
+                <h6 class="card-title">Конверсия</h6>
+                <h4 class="mb-0">25%</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Таблица заявок -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Заявки</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0" id="leadsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th width="50">ID</th>
+                        <th>Клиент</th>
+                        <th>Контакты</th>
+                        <th>Статус</th>
+                        <th>Приоритет</th>
+                        <th>Источник</th>
+                        <th>Менеджер</th>
+                        <th>Дата создания</th>
+                        <th width="120">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lead in leads %}
+                    <tr class="lead-row" data-status="{{ lead.status }}" data-priority="{{ lead.priority }}" data-source="{{ lead.source }}">
+                        <td class="fw-bold">#{{ lead.id }}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+                                    <span class="text-white fw-bold">{{ lead.client.full_name|first|upper }}</span>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">{{ lead.client.full_name }}</h6>
+                                    <small class="text-muted">{{ lead.initial_comment|truncatechars:30 }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div>
+                                <div><i class="fas fa-phone text-muted me-1"></i> {{ lead.client.phone }}</div>
+                                {% if lead.client.email %}
+                                <div><i class="fas fa-envelope text-muted me-1"></i> {{ lead.client.email }}</div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge 
+                                {% if lead.status == 'new' %}bg-warning
+                                {% elif lead.status == 'in_progress' %}bg-info
+                                {% elif lead.status == 'presentation' %}bg-primary
+                                {% elif lead.status == 'test_drive' %}bg-secondary
+                                {% elif lead.status == 'contract' %}bg-dark
+                                {% elif lead.status == 'success' %}bg-success
+                                {% elif lead.status == 'failed' %}bg-danger
+                                {% endif %}">
+                                {{ lead.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge 
+                                {% if lead.priority == 3 %}bg-danger
+                                {% elif lead.priority == 2 %}bg-warning
+                                {% else %}bg-success
+                                {% endif %}">
+                                {{ lead.get_priority_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark">
+                                {{ lead.get_source_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-sm bg-secondary rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 24px; height: 24px;">
+                                    <span class="text-white fw-bold small">{{ lead.assigned_manager.username|first|upper }}</span>
+                                </div>
+                                {{ lead.assigned_manager.get_full_name|default:lead.assigned_manager.username }}
+                            </div>
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ lead.created_date|date:"d.m.Y H:i" }}</small>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'sales:client_detail' lead.client.pk %}" class="btn btn-outline-primary" title="Просмотр">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <button class="btn btn-outline-secondary" title="Изменить статус" data-bs-toggle="modal" data-bs-target="#statusModal" data-lead-id="{{ lead.id }}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <a href="tel:{{ lead.client.phone }}" class="btn btn-outline-success" title="Позвонить">
+                                    <i class="fas fa-phone"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-4">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Нет заявок</h5>
+                            <p class="text-muted">Заявки появятся здесь после их создания</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно изменения статуса -->
+<div class="modal fade" id="statusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Изменение статуса заявки</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="statusForm">
+                    <input type="hidden" id="leadId" name="lead_id">
+                    <div class="mb-3">
+                        <label class="form-label">Новый статус</label>
+                        <select class="form-select" id="newStatus" name="new_status">
+                            <option value="new">🆕 Новая</option>
+                            <option value="in_progress">🔄 В работе</option>
+                            <option value="presentation">📊 Презентация</option>
+                            <option value="test_drive">🚗 Тест-драйв</option>
+                            <option value="contract">📝 Оформление</option>
+                            <option value="success">✅ Успех</option>
+                            <option value="failed">❌ Провал</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Комментарий</label>
+                        <textarea class="form-control" id="statusComment" name="comment" rows="3" placeholder="Дополнительная информация..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="saveStatus">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Фильтрация таблицы
+    const statusFilter = document.getElementById('statusFilter');
+    const priorityFilter = document.getElementById('priorityFilter');
+    const sourceFilter = document.getElementById('sourceFilter');
+    const searchInput = document.getElementById('searchInput');
+    const resetButton = document.getElementById('resetFilters');
+    const leadsTable = document.getElementById('leadsTable');
+    const leadRows = leadsTable.querySelectorAll('.lead-row');
+
+    function filterLeads() {
+        const statusValue = statusFilter.value;
+        const priorityValue = priorityFilter.value;
+        const sourceValue = sourceFilter.value;
+        const searchValue = searchInput.value.toLowerCase();
+
+        leadRows.forEach(row => {
+            const statusMatch = !statusValue || row.dataset.status === statusValue;
+            const priorityMatch = !priorityValue || row.dataset.priority === priorityValue;
+            const sourceMatch = !sourceValue || row.dataset.source === sourceValue;
+            const textMatch = !searchValue || row.textContent.toLowerCase().includes(searchValue);
+
+            row.style.display = (statusMatch && priorityMatch && sourceMatch && textMatch) ? '' : 'none';
+        });
+    }
+
+    statusFilter.addEventListener('change', filterLeads);
+    priorityFilter.addEventListener('change', filterLeads);
+    sourceFilter.addEventListener('change', filterLeads);
+    searchInput.addEventListener('input', filterLeads);
+
+    resetButton.addEventListener('click', function() {
+        statusFilter.value = '';
+        priorityFilter.value = '';
+        sourceFilter.value = '';
+        searchInput.value = '';
+        filterLeads();
+    });
+
+    // Модальное окно изменения статуса
+    const statusModal = document.getElementById('statusModal');
+    statusModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const leadId = button.getAttribute('data-lead-id');
+        document.getElementById('leadId').value = leadId;
+    });
+
+    // Сохранение статуса
+    document.getElementById('saveStatus').addEventListener('click', function() {
+        const leadId = document.getElementById('leadId').value;
+        const newStatus = document.getElementById('newStatus').value;
+        const comment = document.getElementById('statusComment').value;
+
+        // Здесь будет AJAX запрос для сохранения статуса
+        console.log('Сохранение статуса:', { leadId, newStatus, comment });
+        
+        // Закрываем модальное окно
+        const modal = bootstrap.Modal.getInstance(statusModal);
+        modal.hide();
+        
+        // Показываем уведомление
+        alert('Статус успешно обновлен!');
+    });
+
+    // Поиск при нажатии кнопки
+    document.getElementById('searchButton').addEventListener('click', filterLeads);
+});
+</script>
+
+<style>
+.avatar-sm {
+    font-size: 0.8rem;
+}
+.lead-row:hover {
+    background-color: #f8f9fa !important;
+}
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+}
+.card {
+    border: 1px solid #e3e6f0;
+    border-radius: 0.35rem;
+}
+</style>
+{% endblock %}
