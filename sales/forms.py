@@ -84,3 +84,144 @@ class CarFilterForm(forms.Form):
             'step': '0.01'
         })
     )
+
+
+class ContractForm:
+    """Форма для создания и редактирования договоров"""
+
+    class Meta:
+        model = Contract
+        fields = ['client', 'car', 'manager', 'final_price', 'payment_type', 'signed']
+        widgets = {
+            'client': forms.Select(attrs={
+                'class': 'form-control select2',
+                'data-placeholder': 'Выберите клиента'
+            }),
+            'car': forms.Select(attrs={
+                'class': 'form-control select2',
+                'data-placeholder': 'Выберите автомобиль'
+            }),
+            'manager': forms.Select(attrs={
+                'class': 'form-control select2',
+                'data-placeholder': 'Выберите менеджера'
+            }),
+            'final_price': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.01',
+                'placeholder': '0.00'
+            }),
+            'payment_type': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'signed': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Добавляем классы Bootstrap для всех полей
+        for field_name, field in self.fields.items():
+            if field_name not in ['signed']:
+                if 'class' in field.widget.attrs:
+                    field.widget.attrs['class'] += ' form-control'
+                else:
+                    field.widget.attrs['class'] = 'form-control'
+
+        # Ограничиваем выбор только доступными автомобилями
+        self.fields['car'].queryset = Car.objects.filter(status__in=['in_stock', 'reserved'])
+
+        # Устанавливаем текущего менеджера по умолчанию
+        if 'manager' in self.fields:
+            self.fields['manager'].initial = None  # Будет установлено в представлении
+
+        # Добавляем подсказки
+        self.fields['final_price'].help_text = "Цена указывается в рублях"
+        self.fields['payment_type'].help_text = "Выберите способ оплаты"
+
+    def clean_final_price(self):
+        """Валидация итоговой цены"""
+        price = self.cleaned_data.get('final_price')
+        if price and price <= 0:
+            raise forms.ValidationError("Цена должна быть больше нуля")
+        return price
+
+    def clean(self):
+        """Общая валидация формы"""
+        cleaned_data = super().clean()
+        client = cleaned_data.get('client')
+        car = cleaned_data.get('car')
+
+        # Проверка, не заключен ли уже договор на этот автомобиль
+        if car and car.status == 'sold':
+            self.add_error('car', 'Этот автомобиль уже продан')
+
+        return cleaned_data
+
+
+class ContractFilterForm(forms.Form):
+    """Форма фильтрации договоров"""
+
+    STATUS_CHOICES = [
+        ('', 'Все статусы'),
+        ('active', 'Активные'),
+        ('signed', 'Подписанные'),
+        ('pending', 'Ожидают подписания'),
+    ]
+
+    PAYMENT_CHOICES = [('', 'Все способы')] + Contract.PAYMENT_TYPES
+
+    start_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control'
+        }),
+        label="Дата от"
+    )
+
+    end_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control'
+        }),
+        label="Дата до"
+    )
+
+    client = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Поиск по клиенту...'
+        }),
+        label="Клиент"
+    )
+
+    car = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Поиск по автомобилю...'
+        }),
+        label="Автомобиль"
+    )
+
+    payment_type = forms.ChoiceField(
+        choices=PAYMENT_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={
+            'class': 'form-control'
+        }),
+        label="Способ оплаты"
+    )
+
+    status = forms.ChoiceField(
+        choices=STATUS_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={
+            'class': 'form-control'
+        }),
+        label="Статус"
+    )

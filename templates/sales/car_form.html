@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}{{ title }} - АРМ KIA{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex align-items-center">
+        <a href="{% url 'sales:car_list' %}" class="btn btn-outline-secondary me-3">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <h1 class="mb-0"><i class="fas fa-car me-2"></i>{{ title }}</h1>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Информация об автомобиле</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" novalidate>
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Модель *</label>
+                                {% render_field form.model_name class="form-control" placeholder="Например: Rio, Sportage" %}
+                                {% if form.model_name.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ form.model_name.errors }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Комплектация *</label>
+                                {% render_field form.trim_level class="form-control" placeholder="Например: Comfort, Luxe" %}
+                                {% if form.trim_level.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ form.trim_level.errors }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">VIN номер *</label>
+                                {% render_field form.vin class="form-control" placeholder="17 символов" %}
+                                {% if form.vin.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ form.vin.errors }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Год выпуска *</label>
+                                {% render_field form.year_manufacture class="form-control" placeholder="2024" %}
+                                {% if form.year_manufacture.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ form.year_manufacture.errors }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Цвет кузова *</label>
+                                <div class="input-group">
+                                    {% render_field form.color_exterior class="form-control" placeholder="Белый, Черный..." %}
+                                    <span class="input-group-text" id="colorPreview" style="width: 40px;"></span>
+                                </div>
+                                {% if form.color_exterior.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ form.color_exterior.errors }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Цвет салона</label>
+                                <div class="input-group">
+                                    {% render_field form.color_interior class="form-control" placeholder="Бежевый, Черный..." %}
+                                    <span class="input-group-text" id="interiorColorPreview" style="width: 40px;"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Цена *</label>
+                                <div class="input-group">
+                                    {% render_field form.price class="form-control" placeholder="0.00" %}
+                                    <span class="input-group-text">₽</span>
+                                </div>
+                                {% if form.price.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ form.price.errors }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Статус *</label>
+                                {% render_field form.status class="form-select" %}
+                                {% if form.status.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ form.status.errors }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Дата поступления</label>
+                                {% render_field form.warehouse_arrival_date class="form-control" type="date" %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Фото</label>
+                                {% render_field form.photo class="form-control" accept="image/*" %}
+                                {% if form.photo.errors %}
+                                <div class="text-danger small mt-1">
+                                    {{ form.photo.errors }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        {% render_field form.description class="form-control" rows="4" placeholder="Дополнительная информация об автомобиле..." %}
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'sales:car_list' %}" class="btn btn-secondary">Отмена</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>Сохранить автомобиль
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Подсказки -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-lightbulb me-2"></i>Подсказки</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i>VIN номер должен содержать ровно 17 символов</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Модель указывается без бренда KIA (например: Rio, Sportage)</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Цена указывается в рублях</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Поля, отмеченные звездочкой (*), обязательны для заполнения</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Предпросмотр цвета кузова
+    const colorInput = document.getElementById('{{ form.color_exterior.id_for_label }}');
+    const colorPreview = document.getElementById('colorPreview');
+
+    colorInput.addEventListener('input', function() {
+        const color = this.value.toLowerCase();
+        colorPreview.style.backgroundColor = color;
+        colorPreview.style.border = '1px solid #ddd';
+    });
+
+    // Предпросмотр цвета салона
+    const interiorColorInput = document.getElementById('{{ form.color_interior.id_for_label }}');
+    const interiorColorPreview = document.getElementById('interiorColorPreview');
+
+    interiorColorInput.addEventListener('input', function() {
+        const color = this.value.toLowerCase();
+        interiorColorPreview.style.backgroundColor = color;
+        interiorColorPreview.style.border = '1px solid #ddd';
+    });
+
+    // Валидация VIN
+    const vinInput = document.getElementById('{{ form.vin.id_for_label }}');
+    vinInput.addEventListener('input', function() {
+        let value = this.value.toUpperCase();
+        value = value.replace(/[^A-Z0-9]/g, '');
+        if (value.length > 17) {
+            value = value.substring(0, 17);
+        }
+        this.value = value;
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,323 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ car.model_name }} - АРМ KIA{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex align-items-center">
+        <a href="{% url 'sales:car_list' %}" class="btn btn-outline-secondary me-3">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <h1 class="mb-0"><i class="fas fa-car me-2"></i>{{ car.model_name }} {{ car.trim_level }}</h1>
+    </div>
+    {% if user.is_staff %}
+    <div class="btn-group">
+        <a href="{% url 'sales:car_edit' car.pk %}" class="btn btn-outline-primary">
+            <i class="fas fa-edit me-1"></i>Редактировать
+        </a>
+        <button class="btn btn-outline-danger" id="deleteCarBtn">
+            <i class="fas fa-trash me-1"></i>Удалить
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<div class="row">
+    <!-- Левая колонка - Фото -->
+    <div class="col-md-5">
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                {% if car.photo %}
+                <img src="{{ car.photo.url }}" class="img-fluid rounded" alt="{{ car.model_name }}">
+                {% else %}
+                <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 300px;">
+                    <i class="fas fa-car fa-5x text-muted"></i>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Характеристики -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Характеристики</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th width="40%">VIN номер:</th>
+                        <td><code>{{ car.vin }}</code></td>
+                    </tr>
+                    <tr>
+                        <th>Модель:</th>
+                        <td>KIA {{ car.model_name }}</td>
+                    </tr>
+                    <tr>
+                        <th>Комплектация:</th>
+                        <td>{{ car.trim_level }}</td>
+                    </tr>
+                    <tr>
+                        <th>Год выпуска:</th>
+                        <td>{{ car.year_manufacture }}</td>
+                    </tr>
+                    <tr>
+                        <th>Цвет кузова:</th>
+                        <td><span class="color-preview" style="background-color: {{ car.color_exterior|lower }};"></span> {{ car.color_exterior }}</td>
+                    </tr>
+                    {% if car.color_interior %}
+                    <tr>
+                        <th>Цвет салона:</th>
+                        <td>{{ car.color_interior }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <th>Дата поступления:</th>
+                        <td>{{ car.warehouse_arrival_date|date:"d.m.Y"|default:"-" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Статус:</th>
+                        <td>
+                            <span class="badge 
+                                {% if car.status == 'in_stock' %}bg-success
+                                {% elif car.status == 'in_transit' %}bg-warning
+                                {% elif car.status == 'reserved' %}bg-info
+                                {% else %}bg-secondary{% endif %} fs-6">
+                                {{ car.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Правая колонка - Информация о продаже -->
+    <div class="col-md-7">
+        <!-- Цена и действия -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h3 class="text-primary mb-0">{{ car.price|floatformat:0 }} ₽</h3>
+                        <small class="text-muted">Цена с НДС</small>
+                    </div>
+                    <div class="btn-group-vertical">
+                        {% if car.status == 'in_stock' %}
+                        <button class="btn btn-success btn-lg mb-2" id="reserveCarBtn">
+                            <i class="fas fa-bookmark me-2"></i>Забронировать
+                        </button>
+                        <a href="#" class="btn btn-primary btn-lg">
+                            <i class="fas fa-file-signature me-2"></i>Оформить договор
+                        </a>
+                        {% elif car.status == 'reserved' %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Автомобиль забронирован до {{ car.reserved_until|date:"d.m.Y"|default:"не указано" }}
+                        </div>
+                        {% elif car.status == 'sold' %}
+                        <div class="alert alert-secondary mb-0">
+                            <i class="fas fa-check-circle me-2"></i>
+                            Автомобиль продан
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Описание -->
+        {% if car.description %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Описание</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0">{{ car.description }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Комплектация -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Основные опции</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Антиблокировочная система (ABS)</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Система стабилизации (ESC)</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Подушки безопасности</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Кондиционер</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Электростеклоподъемники</li>
+                            <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Аудиосистема</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Информация о продажах -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Информация о продажах</h5>
+            </div>
+            <div class="card-body">
+                {% if sales_history %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Клиент</th>
+                                <th>Менеджер</th>
+                                <th>Цена</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sale in sales_history %}
+                            <tr>
+                                <td>{{ sale.date|date:"d.m.Y" }}</td>
+                                <td>{{ sale.client_name }}</td>
+                                <td>{{ sale.manager_name }}</td>
+                                <td>{{ sale.price|floatformat:0 }} ₽</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">Информация о продажах отсутствует</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно бронирования -->
+<div class="modal fade" id="reserveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Бронирование {{ car.model_name }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Клиент</label>
+                    <select class="form-select" id="clientSelect">
+                        <option value="">Выберите клиента...</option>
+                        {% for client in clients %}
+                        <option value="{{ client.id }}">{{ client.full_name }} ({{ client.phone }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Дата до</label>
+                    <input type="date" class="form-control" id="reserveUntil" 
+                           min="{{ today }}" max="{{ max_date }}">
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Бронирование действует до указанной даты. После этого автомобиль снова станет доступен для продажи.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="confirmReserve">Забронировать</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Бронирование
+    const reserveBtn = document.getElementById('reserveCarBtn');
+    if (reserveBtn) {
+        reserveBtn.addEventListener('click', function() {
+            const reserveModal = new bootstrap.Modal(document.getElementById('reserveModal'));
+            reserveModal.show();
+        });
+    }
+    
+    document.getElementById('confirmReserve')?.addEventListener('click', function() {
+        const clientId = document.getElementById('clientSelect').value;
+        const reserveUntil = document.getElementById('reserveUntil').value;
+        
+        if (!clientId) {
+            alert('Пожалуйста, выберите клиента');
+            return;
+        }
+        
+        fetch(`/sales/cars/{{ car.id }}/reserve/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                client_id: clientId,
+                reserve_until: reserveUntil
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Автомобиль успешно забронирован!');
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Произошла ошибка при бронировании');
+        });
+    });
+
+    // Удаление автомобиля
+    document.getElementById('deleteCarBtn')?.addEventListener('click', function() {
+        if (confirm('Вы уверены, что хотите удалить автомобиль {{ car.model_name }}? Это действие нельзя отменить.')) {
+            fetch(`/sales/cars/{{ car.id }}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = "{% url 'sales:car_list' %}";
+                } else {
+                    alert('Ошибка при удалении');
+                }
+            });
+        }
+    });
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

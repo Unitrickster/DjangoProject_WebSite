@@ -1,0 +1,489 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Каталог автомобилей - АРМ KIA{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-car me-2"></i>Каталог автомобилей</h1>
+    <div class="d-flex gap-2">
+        {% if user.is_staff %}
+        <a href="{% url 'sales:car_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i>Добавить автомобиль
+        </a>
+        {% endif %}
+        <div class="input-group" style="width: 250px;">
+            <input type="text" class="form-control" placeholder="Поиск по модели..." id="searchInput">
+            <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Статистика -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center border-primary">
+            <div class="card-body">
+                <h6 class="card-title text-primary">Всего</h6>
+                <h3 class="mb-0">{{ total_cars }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-success">
+            <div class="card-body">
+                <h6 class="card-title text-success">В наличии</h6>
+                <h3 class="mb-0">{{ in_stock_count }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-warning">
+            <div class="card-body">
+                <h6 class="card-title text-warning">В пути</h6>
+                <h3 class="mb-0">{{ in_transit_count }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center border-info">
+            <div class="card-body">
+                <h6 class="card-title text-info">Забронировано</h6>
+                <h3 class="mb-0">{{ reserved_count }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Фильтры -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3" id="filterForm">
+            <div class="col-md-3">
+                <label class="form-label">Модель</label>
+                <select name="model" class="form-select" id="modelFilter">
+                    <option value="">Все модели</option>
+                    {% for model in models %}
+                    <option value="{{ model }}" {% if request.GET.model == model %}selected{% endif %}>
+                        KIA {{ model }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Статус</label>
+                <select name="status" class="form-select" id="statusFilter">
+                    <option value="">Все статусы</option>
+                    <option value="in_stock" {% if request.GET.status == 'in_stock' %}selected{% endif %}>✅ В наличии</option>
+                    <option value="in_transit" {% if request.GET.status == 'in_transit' %}selected{% endif %}>🚚 В пути</option>
+                    <option value="reserved" {% if request.GET.status == 'reserved' %}selected{% endif %}>🔒 Забронирован</option>
+                    <option value="sold" {% if request.GET.status == 'sold' %}selected{% endif %}>💰 Продан</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Мин. цена (₽)</label>
+                <input type="number" name="min_price" class="form-control" value="{{ request.GET.min_price }}" placeholder="от">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Макс. цена (₽)</label>
+                <input type="number" name="max_price" class="form-control" value="{{ request.GET.max_price }}" placeholder="до">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Цвет</label>
+                <select name="color" class="form-select" id="colorFilter">
+                    <option value="">Все цвета</option>
+                    {% for color in colors %}
+                    <option value="{{ color }}" {% if request.GET.color == color %}selected{% endif %}>{{ color }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Год выпуска</label>
+                <select name="year" class="form-select" id="yearFilter">
+                    <option value="">Все годы</option>
+                    {% for year in years %}
+                    <option value="{{ year }}" {% if request.GET.year == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100 me-2">
+                    <i class="fas fa-filter me-1"></i>Применить
+                </button>
+                <a href="{% url 'sales:car_list' %}" class="btn btn-secondary w-100">
+                    <i class="fas fa-undo me-1"></i>Сбросить
+                </a>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="button" class="btn btn-outline-success w-100" id="exportBtn">
+                    <i class="fas fa-file-excel me-1"></i>Экспорт в Excel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Переключение вида -->
+<div class="d-flex justify-content-end mb-3">
+    <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-secondary active" id="gridViewBtn">
+            <i class="fas fa-th-large"></i> Сетка
+        </button>
+        <button type="button" class="btn btn-outline-secondary" id="listViewBtn">
+            <i class="fas fa-list"></i> Список
+        </button>
+    </div>
+</div>
+
+<!-- Сетка автомобилей -->
+<div id="gridView">
+    <div class="row">
+        {% for car in cars %}
+        <div class="col-xl-3 col-md-4 col-sm-6 mb-4 car-item" 
+             data-model="{{ car.model_name }}" 
+             data-status="{{ car.status }}"
+             data-year="{{ car.year_manufacture }}">
+            <div class="card h-100 car-card">
+                <div class="position-relative">
+                    {% if car.photo %}
+                    <img src="{{ car.photo.url }}" class="card-img-top" alt="{{ car.model_name }}" style="height: 200px; object-fit: cover;">
+                    {% else %}
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                        <i class="fas fa-car fa-4x text-muted"></i>
+                    </div>
+                    {% endif %}
+                    <div class="status-badge position-absolute top-0 end-0 m-2">
+                        <span class="badge 
+                            {% if car.status == 'in_stock' %}bg-success
+                            {% elif car.status == 'in_transit' %}bg-warning
+                            {% elif car.status == 'reserved' %}bg-info
+                            {% else %}bg-secondary{% endif %} fs-6">
+                            {{ car.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title mb-0">{{ car.model_name }}</h5>
+                        <span class="badge bg-light text-dark">{{ car.year_manufacture }}</span>
+                    </div>
+                    <h6 class="card-subtitle mb-2 text-muted">{{ car.trim_level }}</h6>
+                    <div class="car-specs mb-3">
+                        <small class="text-muted d-block">
+                            <i class="fas fa-palette me-1"></i>{{ car.color_exterior }}
+                            {% if car.color_interior %} / {{ car.color_interior }}{% endif %}
+                        </small>
+                        <small class="text-muted d-block">
+                            <i class="fas fa-barcode me-1"></i>{{ car.vin|slice:":8" }}...
+                        </small>
+                    </div>
+                    <h4 class="text-primary mb-0">{{ car.price|floatformat:0 }} ₽</h4>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'sales:car_detail' car.pk %}" class="btn btn-outline-primary flex-grow-1">
+                            <i class="fas fa-eye me-1"></i>Подробнее
+                        </a>
+                        {% if user.is_staff and car.status != 'sold' %}
+                        <button class="btn btn-outline-success reserve-btn" data-car-id="{{ car.id }}" data-car-name="{{ car.model_name }}">
+                            <i class="fas fa-bookmark"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-car fa-4x text-muted mb-3"></i>
+                <h5 class="text-muted">Автомобили не найдены</h5>
+                <p class="text-muted">Попробуйте изменить параметры фильтра или добавьте новый автомобиль</p>
+                {% if user.is_staff %}
+                <a href="{% url 'sales:car_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i>Добавить автомобиль
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Список автомобилей (скрыт по умолчанию) -->
+<div id="listView" style="display: none;">
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Фото</th>
+                            <th>Модель</th>
+                            <th>Комплектация</th>
+                            <th>VIN</th>
+                            <th>Цвет</th>
+                            <th>Год</th>
+                            <th>Цена</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for car in cars %}
+                        <tr>
+                            <td width="60">
+                                {% if car.photo %}
+                                <img src="{{ car.photo.url }}" class="rounded" style="width: 50px; height: 50px; object-fit: cover;">
+                                {% else %}
+                                <div class="bg-light rounded d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                    <i class="fas fa-car text-muted"></i>
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold">{{ car.model_name }}</td>
+                            <td>{{ car.trim_level }}</td>
+                            <td><small>{{ car.vin }}</small></td>
+                            <td>{{ car.color_exterior }}</td>
+                            <td>{{ car.year_manufacture }}</td>
+                            <td class="fw-bold text-primary">{{ car.price|floatformat:0 }} ₽</td>
+                            <td>
+                                <span class="badge 
+                                    {% if car.status == 'in_stock' %}bg-success
+                                    {% elif car.status == 'in_transit' %}bg-warning
+                                    {% elif car.status == 'reserved' %}bg-info
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ car.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{% url 'sales:car_detail' car.pk %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Пагинация -->
+{% if cars.has_other_pages %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if cars.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ cars.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+        </li>
+        {% endif %}
+
+        {% for num in cars.paginator.page_range %}
+            {% if cars.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > cars.number|add:'-3' and num < cars.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                    {{ num }}
+                </a>
+            </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if cars.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ cars.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Модальное окно бронирования -->
+<div class="modal fade" id="reserveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Бронирование автомобиля</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы собираетесь забронировать автомобиль <strong id="carName"></strong></p>
+                <div class="mb-3">
+                    <label class="form-label">Клиент</label>
+                    <select class="form-select" id="clientSelect">
+                        <option value="">Выберите клиента...</option>
+                        {% for client in clients %}
+                        <option value="{{ client.id }}">{{ client.full_name }} ({{ client.phone }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Дата до</label>
+                    <input type="date" class="form-control" id="reserveUntil">
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Бронирование действует 3 дня. После этого автомобиль снова станет доступен для продажи.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="confirmReserve">Забронировать</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Переключение между сеткой и списком
+    const gridView = document.getElementById('gridView');
+    const listView = document.getElementById('listView');
+    const gridBtn = document.getElementById('gridViewBtn');
+    const listBtn = document.getElementById('listViewBtn');
+
+    gridBtn.addEventListener('click', function() {
+        gridView.style.display = 'block';
+        listView.style.display = 'none';
+        gridBtn.classList.add('active');
+        listBtn.classList.remove('active');
+        localStorage.setItem('carView', 'grid');
+    });
+
+    listBtn.addEventListener('click', function() {
+        gridView.style.display = 'none';
+        listView.style.display = 'block';
+        listBtn.classList.add('active');
+        gridBtn.classList.remove('active');
+        localStorage.setItem('carView', 'list');
+    });
+
+    // Восстановление последнего вида
+    const savedView = localStorage.getItem('carView');
+    if (savedView === 'list') {
+        listBtn.click();
+    }
+
+    // Поиск
+    const searchInput = document.getElementById('searchInput');
+    const searchButton = document.getElementById('searchButton');
+    
+    function performSearch() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const carItems = document.querySelectorAll('.car-item');
+        
+        carItems.forEach(item => {
+            const model = item.dataset.model.toLowerCase();
+            if (model.includes(searchTerm)) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+    
+    searchButton.addEventListener('click', performSearch);
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') performSearch();
+    });
+
+    // Бронирование
+    let currentCarId = null;
+    const reserveModal = new bootstrap.Modal(document.getElementById('reserveModal'));
+    
+    document.querySelectorAll('.reserve-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentCarId = this.dataset.carId;
+            document.getElementById('carName').textContent = this.dataset.carName;
+            reserveModal.show();
+        });
+    });
+    
+    document.getElementById('confirmReserve').addEventListener('click', function() {
+        const clientId = document.getElementById('clientSelect').value;
+        const reserveUntil = document.getElementById('reserveUntil').value;
+        
+        if (!clientId) {
+            alert('Пожалуйста, выберите клиента');
+            return;
+        }
+        
+        // Отправка AJAX запроса на бронирование
+        fetch(`/sales/cars/${currentCarId}/reserve/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                client_id: clientId,
+                reserve_until: reserveUntil
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Автомобиль успешно забронирован!');
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Произошла ошибка при бронировании');
+        });
+    });
+
+    // Экспорт в Excel
+    document.getElementById('exportBtn').addEventListener('click', function() {
+        window.location.href = '?export=xlsx&' + new URLSearchParams(new FormData(document.getElementById('filterForm'))).toString();
+    });
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+
+<style>
+.car-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.car-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.status-badge .badge {
+    padding: 5px 10px;
+}
+.car-specs small {
+    font-size: 0.8rem;
+}
+.card-img-top {
+    border-bottom: 1px solid #e3e6f0;
+}
+</style>
+{% endblock %}
